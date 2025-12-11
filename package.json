@@ -1,17 +1,37 @@
 {
   "name": "aetherhub",
   "version": "0.1.0",
-  "dependencies": {
-    "next": "^15.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
-  "devDependencies": {
-    // Other dev packages if any
-  },
+  "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^15.0.0",
+    "react": "^19.0.0-rc",
+    "react-dom": "^19.0.0-rc",
+    "wagmi": "^2.12.0",
+    "@rainbow-me/rainbowkit": "^2.1.0",
+    "@react-three/fiber": "^8.16.0",
+    "@react-three/drei": "^9.105.0",
+    "@react-three/xr": "^5.0.0",
+    "framer-motion": "^11.0.0",
+    "lucide-react": "^0.441.0",
+    "three": "^0.168.0",
+    "tailwindcss": "^3.4.0",
+    "shadcn-ui": "^0.2.3",
+    "plaid": "^15.0.0",
+    "openai": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
