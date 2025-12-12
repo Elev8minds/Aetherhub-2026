@@ -1,3 +1,14 @@
+/**
+ * AetherHub 2049™ - Elev8minds LLC
+ * Copyright © 2025 Elev8minds LLC. All rights reserved.
+ * 
+ * This software is the copyrighted property of Elev8minds LLC.
+ * Unauthorized copying, modification, distribution, or use is strictly prohibited.
+ * 
+ * Trademarks: "AetherHub", "AetherHub 2049", and the AetherHub logo are owned by Elev8minds LLC.
+ * For licensing inquiries: legal@elev8minds.com
+ */
+
 import React from 'react';
 import { 
   Github, Twitter, MessageCircle, Globe, 
@@ -146,10 +157,24 @@ const Footer: React.FC = () => {
           </div>
         </div>
 
+        {/* Copyright & Trademark Notice */}
+        <div className="mb-8 p-4 rounded-lg bg-white/5 border border-white/10">
+          <p className="text-gray-400 text-xs leading-relaxed text-center">
+            <strong className="text-cyan-400">AetherHub 2049™</strong> and the AetherHub logo are trademarks of Elev8minds LLC. All rights reserved.
+            <br />
+            Copyright © {currentYear} Elev8minds LLC. All rights reserved.
+            <br />
+            This software and associated documentation files are the copyrighted property of Elev8minds LLC.
+            Unauthorized copying, modification, distribution, or use is strictly prohibited without prior written permission.
+            <br />
+            For licensing inquiries: <a href="mailto:legal@elev8minds.com" className="text-cyan-400 hover:text-cyan-300 transition-colors">legal@elev8minds.com</a>
+          </p>
+        </div>
+
         {/* Bottom bar */}
         <div className="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-white/5">
           <p className="text-gray-600 text-sm mb-4 md:mb-0">
-            © {currentYear} AetherHub. All rights reserved.
+            © {currentYear} AetherHub 2049™ Elev8minds LLC. All rights reserved.
           </p>
           <p className="text-gray-600 text-sm flex items-center gap-1">
             Built with <Heart className="w-4 h-4 text-magenta-400" /> for the future of finance
