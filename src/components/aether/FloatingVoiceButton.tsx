@@ -158,13 +158,81 @@ const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({ onCommand }) 
 
   // Speak with J.A.R.V.I.S. voice
   const speakResponse = useCallback(async (text: string) => {
-    if (!ttsSupported || isMuted) return;
+    if (!ttsSupported || isMuted) {
+      console.log('J.A.R.V.I.S.: TTS skipped (muted or unsupported)');
+      return;
+    }
+    console.log('J.A.R.V.I.S.: Speaking response...');
     await speakJarvis(text);
   }, [speakJarvis, ttsSupported, isMuted]);
 
+  // Local fallback response generator (client-side backup)
+  const generateLocalFallback = (command: string): string => {
+    const cmd = command.toLowerCase();
+    
+    if (cmd.includes('hello') || cmd.includes('hi') || cmd.includes('hey') || cmd.includes('jarvis') || cmd.includes('aether')) {
+      return "Good day, sir. J.A.R.V.I.S. at your service. How may I assist you with your portfolio today?";
+    }
+    
+    if (cmd.includes('bitcoin') || cmd.includes('btc')) {
+      return "Bitcoin, sir, is the original cryptocurrency created in 2009 by Satoshi Nakamoto. It operates on a decentralized blockchain network. Your Bitcoin holdings are valued at $285,000 with a 1.8% gain today.";
+    }
+    
+    if (cmd.includes('ethereum') || cmd.includes('eth')) {
+      return "Ethereum, sir, is the leading smart contract platform. Your Ethereum holdings are valued at $425,000 with a 3.2% increase today. Shall I explore staking opportunities?";
+    }
+    
+    if (cmd.includes('optimize') || cmd.includes('optimization')) {
+      return "Sir, I've analyzed your portfolio. Your Ethereum allocation is currently at 50%, which is above the recommended threshold. I suggest rebalancing 15% into stablecoins for improved risk-adjusted returns.";
+    }
+    
+    if (cmd.includes('swap') || cmd.includes('exchange') || cmd.includes('trade')) {
+      return "Opening the swap interface, sir. Please specify the tokens you'd like to exchange, or I can suggest optimal swaps based on your current holdings.";
+    }
+    
+    if (cmd.includes('net worth') || cmd.includes('balance') || cmd.includes('portfolio value') || cmd.includes('total') || cmd.includes('worth')) {
+      const total = mockPortfolio.reduce((sum, p) => sum + p.value, 0);
+      return `Your current net worth stands at ${total.toLocaleString()} dollars, sir. That represents a 12.4% increase from last month.`;
+    }
+    
+    if (cmd.includes('stake') || cmd.includes('staking')) {
+      return "I've identified several staking opportunities for your holdings, sir. Ethereum staking through Lido offers 4.2% APY. Your USDC could earn 8.5% on Aave.";
+    }
+    
+    if (cmd.includes('gas') || cmd.includes('fees')) {
+      return "Current gas conditions, sir: Ethereum mainnet is at 25 gwei, Polygon at 30 gwei, and Arbitrum at 0.1 gwei. I recommend Arbitrum for the lowest transaction costs.";
+    }
+    
+    if (cmd.includes('risk') || cmd.includes('analysis')) {
+      return "Running risk analysis, sir. Your portfolio risk score is 6.5 out of 10, indicating moderate to high risk. I recommend increasing your stablecoin allocation to reduce overall volatility exposure.";
+    }
+    
+    if (cmd.includes('yield') || cmd.includes('earn') || cmd.includes('interest')) {
+      return "I've identified yield opportunities across your holdings, sir. Your idle USDC could earn 8.5% APY on Aave. Your ETH could generate 4.2% through liquid staking.";
+    }
+    
+    if (cmd.includes('help') || cmd.includes('what can you do')) {
+      return "I'm at your service, sir. I can optimize your portfolio, execute swaps, check your net worth, find yield opportunities, analyze risk, monitor gas prices, and manage staking positions.";
+    }
+    
+    if (cmd.includes('bye') || cmd.includes('goodbye') || cmd.includes('exit')) {
+      return "Very good, sir. I'll be here if you need me.";
+    }
+    
+    if (cmd.includes('thank')) {
+      return "You're most welcome, sir. Is there anything else I can help you with?";
+    }
+    
+    return `Processing your request about "${command}", sir. Your portfolio is currently valued at $847,293. How may I assist you further?`;
+  };
+
   // Call Aether AI for response
   const getAIResponse = async (command: string): Promise<string> => {
+    console.log('J.A.R.V.I.S.: Getting AI response for:', command);
+    
     try {
+      console.log('J.A.R.V.I.S.: Calling aether-ai edge function...');
+      
       const { data, error } = await supabase.functions.invoke('aether-ai', {
         body: { 
           message: command, 
@@ -173,68 +241,29 @@ const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({ onCommand }) 
         }
       });
 
+      console.log('J.A.R.V.I.S.: Edge function response:', { data, error });
+
       if (error) {
-        console.error('AI generation error:', error);
-        return generateLocalResponse(command);
+        console.error('J.A.R.V.I.S.: Edge function error:', error);
+        const fallback = generateLocalFallback(command);
+        console.log('J.A.R.V.I.S.: Using local fallback:', fallback.slice(0, 50) + '...');
+        return fallback;
       }
 
-      return data?.response || generateLocalResponse(command);
-    } catch (err) {
-      console.error('AI fetch error:', err);
-      return generateLocalResponse(command);
-    }
-  };
-
-  // Local fallback response generator
-  const generateLocalResponse = (command: string): string => {
-    const cmd = command.toLowerCase();
-    
-    if (cmd.includes('optimize') || cmd.includes('optimization')) {
-      return "Sir, I've analyzed your portfolio. Your Ethereum allocation is currently at 50%, which is above the recommended threshold. I suggest rebalancing 15% into stablecoins for improved risk-adjusted returns. This adjustment could improve your Sharpe ratio from 1.2 to approximately 1.8.";
-    }
-    
-    if (cmd.includes('swap') || cmd.includes('exchange') || cmd.includes('trade')) {
-      const match = cmd.match(/swap\s+(\w+)\s+(?:to|for)\s+(\w+)/i);
-      if (match) {
-        return `Initiating swap protocol from ${match[1].toUpperCase()} to ${match[2].toUpperCase()}, sir. Current exchange rate is favorable. Estimated gas fees are 2.50 dollars. Awaiting your confirmation.`;
+      if (data?.response) {
+        console.log('J.A.R.V.I.S.: Got AI response, length:', data.response.length, 'source:', data.source);
+        return data.response;
       }
-      return "Opening the swap interface, sir. Please specify the tokens you'd like to exchange, or I can suggest optimal swaps based on your current holdings.";
+
+      console.log('J.A.R.V.I.S.: No response in data, using local fallback');
+      return generateLocalFallback(command);
+      
+    } catch (err: any) {
+      console.error('J.A.R.V.I.S.: Fetch error:', err);
+      const fallback = generateLocalFallback(command);
+      console.log('J.A.R.V.I.S.: Using local fallback after error:', fallback.slice(0, 50) + '...');
+      return fallback;
     }
-    
-    if (cmd.includes('net worth') || cmd.includes('balance') || cmd.includes('portfolio value') || cmd.includes('total')) {
-      const total = mockPortfolio.reduce((sum, p) => sum + p.value, 0);
-      return `Your current net worth stands at ${total.toLocaleString()} dollars, sir. That represents a 12.4% increase from last month. Your top performing asset is Ethereum with a 24% gain, followed by your Solana holdings at 5.4% today.`;
-    }
-    
-    if (cmd.includes('stake') || cmd.includes('staking')) {
-      return "I've identified several staking opportunities for your holdings, sir. Ethereum staking through Lido offers 4.2% APY. Your USDC could earn 8.5% on Aave. Shall I initiate any of these positions?";
-    }
-    
-    if (cmd.includes('gas') || cmd.includes('fees')) {
-      return "Current gas conditions, sir: Ethereum mainnet is at 25 gwei, Polygon at 30 gwei, and Arbitrum at 0.1 gwei. I recommend Arbitrum for the lowest transaction costs.";
-    }
-    
-    if (cmd.includes('risk') || cmd.includes('analysis')) {
-      return "Running risk analysis, sir. Your portfolio risk score is 6.5 out of 10, indicating moderate to high risk. 65% of your holdings are in volatile assets. I recommend increasing your stablecoin allocation to reduce overall volatility exposure.";
-    }
-    
-    if (cmd.includes('yield') || cmd.includes('earn') || cmd.includes('interest')) {
-      return "I've identified yield opportunities across your holdings, sir. Your idle USDC could earn 8.5% APY on Aave. Your ETH could generate 4.2% through liquid staking. Total potential additional earnings: approximately 12,400 dollars annually.";
-    }
-    
-    if (cmd.includes('help') || cmd.includes('what can you do')) {
-      return "I'm at your service, sir. I can optimize your portfolio, execute swaps, check your net worth, find yield opportunities, analyze risk, monitor gas prices, and manage staking positions. Simply tell me what you need.";
-    }
-    
-    if (cmd.includes('hello') || cmd.includes('hi') || cmd.includes('hey') || cmd.includes('jarvis')) {
-      return JARVIS_RESPONSES.greeting;
-    }
-    
-    if (cmd.includes('bye') || cmd.includes('goodbye') || cmd.includes('exit')) {
-      return JARVIS_RESPONSES.goodbye;
-    }
-    
-    return `Processing your request, sir. I'm analyzing the optimal course of action for: "${command}". One moment please.`;
   };
 
   const startListening = useCallback(async () => {
@@ -268,6 +297,7 @@ const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({ onCommand }) 
           const current = event.resultIndex;
           const result = event.results[current][0].transcript;
           setTranscript(result);
+          console.log('J.A.R.V.I.S.: Heard:', result, 'Final:', event.results[current].isFinal);
           
           if (event.results[current].isFinal) {
             handleCommand(result);
@@ -275,6 +305,7 @@ const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({ onCommand }) 
         };
 
         recognitionRef.current.onerror = (event: any) => {
+          console.error('J.A.R.V.I.S.: Speech recognition error:', event.error);
           setIsListening(false);
           switch (event.error) {
             case 'not-allowed':
@@ -295,6 +326,7 @@ const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({ onCommand }) 
         };
 
         recognitionRef.current.onend = () => {
+          console.log('J.A.R.V.I.S.: Speech recognition ended');
           setIsListening(false);
           if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
@@ -303,11 +335,14 @@ const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({ onCommand }) 
         };
 
         recognitionRef.current.start();
+        console.log('J.A.R.V.I.S.: Speech recognition started');
       } catch (error: any) {
+        console.error('J.A.R.V.I.S.: Failed to start recognition:', error);
         setIsListening(false);
         setPermissionError('Failed to start voice recognition.');
       }
     } else {
+      console.log('J.A.R.V.I.S.: No SpeechRecognition API, using demo mode');
       // Demo fallback
       setTimeout(() => {
         const mockCommands = ['optimize portfolio', 'show net worth', 'what are the gas fees'];
@@ -320,6 +355,7 @@ const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({ onCommand }) 
 
   const handleCommand = useCallback(async (command: string) => {
     const normalizedCommand = command.toLowerCase().replace(/aether,?|jarvis,?/gi, '').trim();
+    console.log('J.A.R.V.I.S.: Processing command:', normalizedCommand);
     
     setIsListening(false);
     setIsProcessing(true);
@@ -327,15 +363,18 @@ const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({ onCommand }) 
     try {
       // Get AI response
       const response = await getAIResponse(normalizedCommand);
+      console.log('J.A.R.V.I.S.: Got response, setting state...');
       setAiResponse(response);
       setIsProcessing(false);
       
       // Speak the response with J.A.R.V.I.S. voice
+      console.log('J.A.R.V.I.S.: Speaking response...');
       await speakResponse(response);
       
       // Trigger callback
       onCommand?.(normalizedCommand);
-    } catch (err) {
+    } catch (err: any) {
+      console.error('J.A.R.V.I.S.: Command handling error:', err);
       setIsProcessing(false);
       const errorResponse = JARVIS_RESPONSES.error;
       setAiResponse(errorResponse);
@@ -627,7 +666,7 @@ const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({ onCommand }) 
               {/* Quick commands hint */}
               {!transcript && !permissionError && !aiResponse && (
                 <div className="mt-3 text-center">
-                  <p className="text-xs text-gray-600">Try: "Optimize portfolio" or "What's my net worth?"</p>
+                  <p className="text-xs text-gray-600">Try: "Hello" or "What is Bitcoin?"</p>
                 </div>
               )}
 

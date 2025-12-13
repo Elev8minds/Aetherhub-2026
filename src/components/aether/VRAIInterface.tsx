@@ -184,10 +184,39 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
   }, [speakJarvis, ttsSupported, ttsEnabled]);
 
 
+  // Local fallback response generator (client-side backup)
+  const generateLocalFallback = (query: string): string => {
+    const q = query.toLowerCase();
+    
+    if (q.includes('hello') || q.includes('hi') || q.includes('hey')) {
+      return "Good day, sir. J.A.R.V.I.S. at your service. How may I assist you with your portfolio today?";
+    }
+    if (q.includes('bitcoin') || q.includes('btc')) {
+      return "Bitcoin, sir, is the original cryptocurrency created in 2009 by Satoshi Nakamoto. It operates on a decentralized blockchain network.";
+    }
+    if (q.includes('ethereum') || q.includes('eth')) {
+      return "Ethereum, sir, is the leading smart contract platform. It powers decentralized applications and DeFi protocols.";
+    }
+    if (q.includes('portfolio') || q.includes('status') || q.includes('performance')) {
+      return "Your portfolio is performing well, sir. Total value is approximately $847,293 with a 12.4% increase from last month.";
+    }
+    if (q.includes('optimize') || q.includes('recommend')) {
+      return "I recommend rebalancing your portfolio, sir. Consider reducing ETH allocation from 50% to 35% and adding stablecoin exposure for yield opportunities.";
+    }
+    if (q.includes('swap') || q.includes('trade')) {
+      return "I can help you execute a swap, sir. Current rates are favorable with low gas fees on Layer 2 networks.";
+    }
+    if (q.includes('risk')) {
+      return "Your portfolio risk score is 6.8 out of 10, sir. This indicates moderate to high risk due to crypto volatility exposure.";
+    }
+    return `Processing your request about "${query}", sir. Your portfolio is in good standing. How else may I assist you?`;
+  };
+
   // Process AI query
   const processAIQuery = useCallback(async (query: string) => {
     if (!query.trim()) return;
 
+    console.log('VR AI: Processing query:', query);
     setIsProcessing(true);
     if (audioEnabled) playProcessingLoop();
 
@@ -219,6 +248,8 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
 
       const totalValue = zkProofEnabled ? 0 : PORTFOLIO_ASSETS.reduce((sum, a) => sum + a.value, 0);
 
+      console.log('VR AI: Calling aether-ai edge function...');
+      
       // Call Aether AI
       const { data, error } = await supabase.functions.invoke('aether-ai', {
         body: {
@@ -228,9 +259,20 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
         }
       });
 
-      if (error) throw error;
+      console.log('VR AI: Edge function response:', { data, error });
 
-      const responseText = data.response || 'I processed your request.';
+      let responseText: string;
+      
+      if (error) {
+        console.error('VR AI: Edge function error:', error);
+        responseText = generateLocalFallback(query);
+      } else if (data?.response) {
+        responseText = data.response;
+        console.log('VR AI: Got response, length:', responseText.length, 'source:', data.source);
+      } else {
+        console.log('VR AI: No response in data, using local fallback');
+        responseText = generateLocalFallback(query);
+      }
 
       // Remove processing message and add response
       setMessages(prev => {
@@ -238,8 +280,8 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
         return [...filtered, {
           id: `response-${Date.now()}`,
           content: responseText,
-          type: determineMessageType(query, data),
-          actions: data.actions || [],
+          type: determineMessageType(query, data || {}),
+          actions: data?.actions || [],
           timestamp: new Date()
         }];
       });
@@ -247,17 +289,18 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
       if (audioEnabled) playAIResponseSequence();
       
       // Speak the AI response with TTS
-      speakResponse(responseText);
+      console.log('VR AI: Speaking response...');
+      await speakResponse(responseText);
       
       logAuditEvent('VR_AI_RESPONSE', { 
         success: true,
-        hasActions: (data.actions?.length || 0) > 0
+        hasActions: (data?.actions?.length || 0) > 0
       });
 
-    } catch (error) {
-      console.error('AI Error:', error);
+    } catch (error: any) {
+      console.error('VR AI: Processing error:', error);
       
-      const errorMessage = 'I encountered an issue processing your request. Please try again.';
+      const errorMessage = generateLocalFallback(query);
       
       // Remove processing and add error message
       setMessages(prev => {
@@ -265,21 +308,23 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
         return [...filtered, {
           id: `error-${Date.now()}`,
           content: errorMessage,
-          type: 'warning',
+          type: 'response',
           timestamp: new Date()
         }];
       });
 
       if (audioEnabled) playError();
       
-      // Speak error message
-      speakResponse(errorMessage);
+      // Speak fallback message
+      await speakResponse(errorMessage);
       
       logAuditEvent('VR_AI_ERROR', { error: String(error) });
     } finally {
       setIsProcessing(false);
     }
   }, [audioEnabled, isVRActive, zkProofEnabled, logAuditEvent, playAIResponseSequence, playProcessingLoop, playError, speakResponse]);
+
+
 
 
   // Determine message type based on query and response
