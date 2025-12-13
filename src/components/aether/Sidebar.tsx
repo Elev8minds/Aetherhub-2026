@@ -343,9 +343,38 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
             >
               {/* Header with Close Button */}
               <div className="flex-shrink-0 flex justify-between items-center p-6 border-b border-cyan-500/30">
-                <h2 className="text-2xl font-black bg-gradient-to-r from-cyan-400 to-purple-600 bg-clip-text text-transparent" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                  AetherHub
-                </h2>
+                <div className="flex items-center gap-3">
+                  {/* Custom Logo */}
+                  <img 
+                    src="/logo.svg" 
+                    alt="AetherHub" 
+                    className="w-10 h-10 object-contain drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]"
+                    onError={(e) => {
+                      // Fallback to PNG if SVG fails
+                      const target = e.target as HTMLImageElement;
+                      if (target.src.endsWith('.svg')) {
+                        target.src = '/logo.png';
+                      } else {
+                        // Final fallback - hide image and show text only
+                        target.style.display = 'none';
+                      }
+                    }}
+                  />
+                  <div>
+                    <h2 
+                      className="text-xl font-black bg-gradient-to-r from-cyan-400 to-purple-600 bg-clip-text text-transparent" 
+                      style={{ fontFamily: 'Orbitron, sans-serif' }}
+                    >
+                      AetherHub
+                    </h2>
+                    <p 
+                      className="text-[9px] font-bold uppercase tracking-[0.15em] text-cyan-400 drop-shadow-[0_0_8px_rgba(0,255,255,0.6)]"
+                      style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+                    >
+                      Cross-chain Intelligence
+                    </p>
+                  </div>
+                </div>
                 <button 
                   onClick={closeSidebar}
                   className="p-2 rounded-lg hover:bg-white/10 transition-colors"

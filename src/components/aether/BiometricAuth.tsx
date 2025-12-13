@@ -73,18 +73,48 @@ const BiometricAuth: React.FC<BiometricAuthProps> = ({ onAuthenticated, onClose 
           </svg>
         </button>
 
-        {/* Header */}
+        {/* Header with Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center">
-            <Shield className="w-8 h-8 text-cyan-400" />
+          {/* Custom Logo */}
+          <div className="flex justify-center mb-4">
+            <img 
+              src="/logo.svg" 
+              alt="AetherHub" 
+              className="w-16 h-16 object-contain drop-shadow-[0_0_15px_rgba(0,240,255,0.5)]"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.src.endsWith('.svg')) {
+                  target.src = '/logo.png';
+                } else {
+                  // Fallback to icon
+                  target.style.display = 'none';
+                  const fallback = document.getElementById('logo-fallback');
+                  if (fallback) fallback.style.display = 'flex';
+                }
+              }}
+            />
+            {/* Fallback Logo */}
+            <div 
+              id="logo-fallback" 
+              className="hidden w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 items-center justify-center"
+            >
+              <Shield className="w-8 h-8 text-cyan-400" />
+            </div>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-            Secure Access
+          <h2 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+            AetherHub
           </h2>
+          <p 
+            className="text-[10px] font-bold uppercase tracking-[0.15em] text-cyan-400 drop-shadow-[0_0_8px_rgba(0,255,255,0.6)] mb-3"
+            style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+          >
+            Cross-chain Intelligence
+          </p>
           <p className="text-gray-400 text-sm">
             Authenticate with biometrics or passkey
           </p>
         </div>
+
 
         {/* Auth Methods */}
         {!isScanning && !isAuthenticated && (

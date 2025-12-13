@@ -86,22 +86,50 @@ const VRConsentModal: React.FC<VRConsentModalProps> = ({
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-gray-900/95 via-black/95 to-gray-900/95 rounded-3xl border border-cyan-500/30 shadow-[0_0_60px_rgba(0,240,255,0.2)]"
           >
-            {/* Header */}
+            {/* Header with Logo */}
             <div className="relative p-6 border-b border-white/10">
               <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-magenta-500/10" />
               <div className="relative flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center border border-cyan-500/30">
-                  <Glasses className="w-8 h-8 text-cyan-400" />
+                {/* Custom Logo */}
+                <div className="relative">
+                  <img 
+                    src="/logo.svg" 
+                    alt="AetherHub" 
+                    className="w-16 h-16 object-contain drop-shadow-[0_0_15px_rgba(0,240,255,0.5)]"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (target.src.endsWith('.svg')) {
+                        target.src = '/logo.png';
+                      } else {
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }
+                    }}
+                  />
+                  {/* Fallback Logo */}
+                  <div 
+                    className="hidden w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 items-center justify-center border border-cyan-500/30"
+                  >
+                    <Glasses className="w-8 h-8 text-cyan-400" />
+                  </div>
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
                     VR Mode Consent
                   </h2>
+                  <p 
+                    className="text-[10px] font-bold uppercase tracking-[0.15em] text-cyan-400 drop-shadow-[0_0_8px_rgba(0,255,255,0.6)]"
+                    style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+                  >
+                    Cross-chain Intelligence
+                  </p>
                   <p className="text-gray-400 text-sm mt-1">
                     Review and accept terms before entering immersive mode
                   </p>
                 </div>
               </div>
+
               
               {/* Device Info */}
               {deviceInfo && (

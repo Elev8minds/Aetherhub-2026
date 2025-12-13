@@ -9,7 +9,7 @@
  * For licensing inquiries: legal@elev8minds.com
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Github, Twitter, MessageCircle, Globe, 
   Shield, Lock, Zap, Heart 
@@ -17,6 +17,7 @@ import {
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
+  const [logoError, setLogoError] = useState(false);
 
   const links = {
     product: [
@@ -58,6 +59,13 @@ const Footer: React.FC = () => {
     { icon: Zap, label: '100+ Chains' },
   ];
 
+  // Fallback logo component
+  const FallbackLogo = () => (
+    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-magenta-500 flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.3)]">
+      <span className="text-white font-bold text-xl" style={{ fontFamily: 'Orbitron, sans-serif' }}>A</span>
+    </div>
+  );
+
   return (
     <footer className="relative border-t border-white/5 bg-black/50 backdrop-blur-xl">
       {/* Gradient overlay */}
@@ -78,14 +86,44 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-magenta-500 flex items-center justify-center">
-                <span className="text-white font-bold text-lg" style={{ fontFamily: 'Orbitron, sans-serif' }}>A</span>
+            {/* Logo with Tagline */}
+            <div className="flex flex-col sm:flex-row items-start gap-3 mb-4">
+              {/* Custom Logo */}
+              {!logoError ? (
+                <img 
+                  src="/logo.svg" 
+                  alt="AetherHub" 
+                  className="w-12 h-12 object-contain drop-shadow-[0_0_15px_rgba(0,240,255,0.5)]"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src.endsWith('.svg')) {
+                      target.src = '/logo.png';
+                    } else {
+                      setLogoError(true);
+                    }
+                  }}
+                />
+              ) : (
+                <FallbackLogo />
+              )}
+              
+              {/* Brand Name + Tagline */}
+              <div className="flex flex-col">
+                <span 
+                  className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent" 
+                  style={{ fontFamily: 'Orbitron, sans-serif' }}
+                >
+                  AetherHub
+                </span>
+                <span 
+                  className="text-[10px] font-bold uppercase tracking-[0.15em] text-cyan-400 drop-shadow-[0_0_8px_rgba(0,255,255,0.6)] mt-0.5"
+                  style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+                >
+                  Cross-chain Intelligence
+                </span>
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                AetherHub
-              </span>
             </div>
+            
             <p className="text-gray-500 text-sm mb-4">
               The future of cross-chain finance. Manage, optimize, and grow your wealth across 100+ blockchains.
             </p>

@@ -42,6 +42,7 @@ const Header: React.FC<HeaderProps> = ({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const { hideBalances, toggleHideBalances } = useAppContext();
 
   const notifications = [
@@ -83,6 +84,13 @@ const Header: React.FC<HeaderProps> = ({
 
   const isWalletConnected = !!connectedWallet;
 
+  // Fallback logo component
+  const FallbackLogo = () => (
+    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-magenta-500 flex items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.3)]">
+      <span className="text-white font-bold text-lg" style={{ fontFamily: 'Orbitron, sans-serif' }}>A</span>
+    </div>
+  );
+
   return (
     <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur-xl bg-black/50 border-b border-white/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -90,20 +98,46 @@ const Header: React.FC<HeaderProps> = ({
           {/* Logo - with left padding for hamburger button (always visible now) */}
           <div className="flex items-center gap-4 pl-14">
             <div className="flex items-center gap-3">
+              {/* Custom Logo with Status Indicator */}
               <div className="relative">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-magenta-500 flex items-center justify-center">
-                  <span className="text-white font-bold text-lg" style={{ fontFamily: 'Orbitron, sans-serif' }}>A</span>
-                </div>
+                {!logoError ? (
+                  <img 
+                    src="/logo.svg" 
+                    alt="AetherHub" 
+                    className="w-10 h-10 object-contain drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (target.src.endsWith('.svg')) {
+                        target.src = '/logo.png';
+                      } else {
+                        setLogoError(true);
+                      }
+                    }}
+                  />
+                ) : (
+                  <FallbackLogo />
+                )}
+                {/* Connection Status Indicator */}
                 <div className={cn(
                   'absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-black',
                   isWalletConnected ? 'bg-green-400' : 'bg-gray-500'
                 )} />
               </div>
+              
+              {/* Brand Name + Tagline */}
               <div className="hidden sm:block">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                <h1 
+                  className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent" 
+                  style={{ fontFamily: 'Orbitron, sans-serif' }}
+                >
                   AetherHub
                 </h1>
-                <p className="text-[10px] text-gray-500 -mt-1">Cross-Chain Intelligence</p>
+                <p 
+                  className="text-[9px] font-bold uppercase tracking-[0.12em] text-cyan-400 -mt-0.5 drop-shadow-[0_0_8px_rgba(0,255,255,0.6)]"
+                  style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+                >
+                  Cross-chain Intelligence
+                </p>
               </div>
             </div>
           </div>

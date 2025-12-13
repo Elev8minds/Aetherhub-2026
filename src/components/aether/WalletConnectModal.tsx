@@ -403,13 +403,37 @@ const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer with Logo */}
         <div className="p-4 border-t border-white/10 bg-black/30">
-          <div className="flex items-center justify-center gap-2 text-xs text-gray-600">
-            <Globe className="w-3 h-3" />
-            <span>Powered by AetherHub</span>
+          <div className="flex items-center justify-center gap-3">
+            <img 
+              src="/logo.svg" 
+              alt="AetherHub" 
+              className="w-5 h-5 object-contain drop-shadow-[0_0_5px_rgba(0,240,255,0.5)]"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.src.endsWith('.svg')) {
+                  target.src = '/logo.png';
+                } else {
+                  target.style.display = 'none';
+                }
+              }}
+            />
+            <span className="text-xs text-gray-500">Powered by</span>
+            <span 
+              className="text-xs font-bold bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent"
+              style={{ fontFamily: 'Orbitron, sans-serif' }}
+            >
+              AetherHub
+            </span>
+            <span 
+              className="text-[8px] font-bold uppercase tracking-wider text-cyan-400 drop-shadow-[0_0_5px_rgba(0,255,255,0.5)]"
+            >
+              Cross-chain Intelligence
+            </span>
           </div>
         </div>
+
       </GlassCard>
     </div>
   );

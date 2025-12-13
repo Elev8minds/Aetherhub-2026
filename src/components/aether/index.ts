@@ -12,6 +12,7 @@
 // Re-export all aether components for Vite + React
 // No 'use client' directives needed
 
+export { default as AetherHubLogo, AetherHubLogoMark } from './AetherHubLogo';
 export { default as AIOptimizer } from './AIOptimizer';
 export { default as AssetCard } from './AssetCard';
 export { default as AssetGallery3D } from './AssetGallery3D';
@@ -19,6 +20,8 @@ export { default as AssetLogo } from './AssetLogo';
 export { default as BankAccounts } from './BankAccounts';
 export { default as BiometricAuth } from './BiometricAuth';
 export { default as ChainFilter } from './ChainFilter';
+export { default as FloatingVoiceButton } from './FloatingVoiceButton';
+
 export { default as Footer } from './Footer';
 export { default as GasPriceWidget } from './GasPriceWidget';
 export { default as GlassCard } from './GlassCard';

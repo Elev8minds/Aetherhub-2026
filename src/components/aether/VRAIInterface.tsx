@@ -1,3 +1,10 @@
+/**
+ * AetherHub 2049™ - VR AI Interface Component
+ * Copyright © 2025 Elev8minds LLC. All rights reserved.
+ * 
+ * J.A.R.V.I.S.-style voice assistant with ElevenLabs TTS
+ */
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -7,11 +14,12 @@ import { supabase } from '@/lib/supabase';
 import { PORTFOLIO_ASSETS } from '@/lib/constants';
 import VRAITextPanel from './VRAITextPanel';
 import { useVRSpatialAudio } from './VRSpatialAudio';
+import { useJarvisVoice, JARVIS_RESPONSES } from '@/hooks/useJarvisVoice';
 import GlassCard from './GlassCard';
 import {
   Mic, MicOff, Brain, Sparkles, Send, Loader2,
   Volume2, VolumeX, Glasses, Settings, ArrowRightLeft,
-  TrendingUp, Shield, Zap, MessageSquare, Hand
+  TrendingUp, Shield, Zap, MessageSquare, Hand, AlertCircle
 } from 'lucide-react';
 
 interface AIMessage {
@@ -29,6 +37,8 @@ interface VRAIInterfaceProps {
   onOptimizeRequest?: () => void;
 }
 
+type MicPermissionState = 'prompt' | 'granted' | 'denied' | 'unsupported' | 'checking';
+
 const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
   onSwapRequest,
   onOptimizeRequest
@@ -43,32 +53,136 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
     playError 
   } = useVRSpatialAudio();
 
+  // J.A.R.V.I.S. voice hook for AI voice responses
+  const { 
+    speak: speakJarvis, 
+    stop: stopJarvis, 
+    isSpeaking, 
+    isLoading: isVoiceLoading,
+    usingFallback,
+    isSupported: ttsSupported 
+  } = useJarvisVoice();
+
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [textInput, setTextInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const [ttsEnabled, setTtsEnabled] = useState(true); // J.A.R.V.I.S. voice toggle
   const [waveform, setWaveform] = useState<number[]>(Array(20).fill(0.1));
   const [gestureMode, setGestureMode] = useState(false);
   const [panelLayout, setPanelLayout] = useState<'arc' | 'stack' | 'float'>('arc');
+  const [micPermission, setMicPermission] = useState<MicPermissionState>('checking');
+  const [permissionError, setPermissionError] = useState<string | null>(null);
+
 
   const recognitionRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  // Waveform animation when listening
+  // Check microphone permission on mount
   useEffect(() => {
-    if (!isListening) {
+    checkMicrophonePermission();
+    
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {}
+      }
+      stopJarvis();
+    };
+  }, []);
+
+  // Waveform animation when listening or speaking
+  useEffect(() => {
+    if (!isListening && !isSpeaking && !isVoiceLoading) {
       setWaveform(Array(20).fill(0.1));
       return;
     }
 
     const interval = setInterval(() => {
       setWaveform(prev => prev.map(() => 0.1 + Math.random() * 0.9));
-    }, 100);
+    }, isSpeaking || isVoiceLoading ? 80 : 100);
 
     return () => clearInterval(interval);
-  }, [isListening]);
+  }, [isListening, isSpeaking, isVoiceLoading]);
+
+  // Check microphone permission status
+  const checkMicrophonePermission = async () => {
+    try {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setMicPermission('unsupported');
+        return;
+      }
+
+      if (navigator.permissions && navigator.permissions.query) {
+        try {
+          const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+          setMicPermission(result.state as MicPermissionState);
+          
+          result.addEventListener('change', () => {
+            setMicPermission(result.state as MicPermissionState);
+            if (result.state === 'granted') {
+              setPermissionError(null);
+            }
+          });
+        } catch (e) {
+          setMicPermission('prompt');
+        }
+      } else {
+        setMicPermission('prompt');
+      }
+    } catch (error) {
+      console.error('Error checking microphone permission:', error);
+      setMicPermission('prompt');
+    }
+  };
+
+  // Request microphone permission explicitly
+  const requestMicrophonePermission = async (): Promise<boolean> => {
+    try {
+      setPermissionError(null);
+      
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+      });
+      
+      streamRef.current = stream;
+      setMicPermission('granted');
+      return true;
+    } catch (error: any) {
+      console.error('Microphone permission error:', error);
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        setMicPermission('denied');
+        setPermissionError('Microphone access denied. Please allow microphone access in your browser settings.');
+      } else if (error.name === 'NotFoundError') {
+        setPermissionError('No microphone found. Please connect a microphone and try again.');
+      } else {
+        setPermissionError(`Microphone error: ${error.message || 'Unknown error'}`);
+      }
+      
+      return false;
+    }
+  };
+
+  // Speak AI response with J.A.R.V.I.S. voice
+  const speakResponse = useCallback(async (text: string) => {
+    if (!ttsSupported || !ttsEnabled) return;
+    await speakJarvis(text);
+  }, [speakJarvis, ttsSupported, ttsEnabled]);
+
 
   // Process AI query
   const processAIQuery = useCallback(async (query: string) => {
@@ -116,12 +230,14 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
 
       if (error) throw error;
 
+      const responseText = data.response || 'I processed your request.';
+
       // Remove processing message and add response
       setMessages(prev => {
         const filtered = prev.filter(m => m.id !== processingId);
         return [...filtered, {
           id: `response-${Date.now()}`,
-          content: data.response || 'I processed your request.',
+          content: responseText,
           type: determineMessageType(query, data),
           actions: data.actions || [],
           timestamp: new Date()
@@ -129,6 +245,9 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
       });
 
       if (audioEnabled) playAIResponseSequence();
+      
+      // Speak the AI response with TTS
+      speakResponse(responseText);
       
       logAuditEvent('VR_AI_RESPONSE', { 
         success: true,
@@ -138,12 +257,14 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
     } catch (error) {
       console.error('AI Error:', error);
       
+      const errorMessage = 'I encountered an issue processing your request. Please try again.';
+      
       // Remove processing and add error message
       setMessages(prev => {
         const filtered = prev.filter(m => m.id !== processingId);
         return [...filtered, {
           id: `error-${Date.now()}`,
-          content: 'I encountered an issue processing your request. Please try again.',
+          content: errorMessage,
           type: 'warning',
           timestamp: new Date()
         }];
@@ -151,11 +272,15 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
 
       if (audioEnabled) playError();
       
+      // Speak error message
+      speakResponse(errorMessage);
+      
       logAuditEvent('VR_AI_ERROR', { error: String(error) });
     } finally {
       setIsProcessing(false);
     }
-  }, [audioEnabled, isVRActive, zkProofEnabled, logAuditEvent, playAIResponseSequence, playProcessingLoop, playError]);
+  }, [audioEnabled, isVRActive, zkProofEnabled, logAuditEvent, playAIResponseSequence, playProcessingLoop, playError, speakResponse]);
+
 
   // Determine message type based on query and response
   const determineMessageType = (query: string, data: any): AIMessage['type'] => {
@@ -175,8 +300,18 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
     return 'response';
   };
 
-  // Start voice recognition
-  const startListening = useCallback(() => {
+  // Start voice recognition with explicit permission request
+  const startListening = useCallback(async () => {
+    setPermissionError(null);
+    
+    // First, explicitly request microphone permission
+    // This is essential for incognito mode where getUserMedia triggers the prompt
+    const hasPermission = await requestMicrophonePermission();
+    
+    if (!hasPermission) {
+      return;
+    }
+
     setIsListening(true);
     setTranscript('');
     if (audioEnabled) playCommandReceived();
@@ -184,32 +319,70 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     
     if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
+      try {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.lang = 'en-US';
+        recognitionRef.current.maxAlternatives = 1;
 
-      recognitionRef.current.onresult = (event: any) => {
-        const current = event.resultIndex;
-        const result = event.results[current][0].transcript;
-        setTranscript(result);
-        
-        if (event.results[current].isFinal) {
-          processAIQuery(result);
+        recognitionRef.current.onstart = () => {
+          console.log('VR AI: Speech recognition started');
+        };
+
+        recognitionRef.current.onresult = (event: any) => {
+          const current = event.resultIndex;
+          const result = event.results[current][0].transcript;
+          setTranscript(result);
+          
+          if (event.results[current].isFinal) {
+            processAIQuery(result);
+            setIsListening(false);
+          }
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+          console.error('VR AI: Speech recognition error:', event.error);
           setIsListening(false);
-        }
-      };
+          if (audioEnabled) playError();
+          
+          switch (event.error) {
+            case 'not-allowed':
+              setPermissionError('Microphone access denied. Please allow microphone access and try again.');
+              setMicPermission('denied');
+              break;
+            case 'no-speech':
+              setPermissionError('No speech detected. Please try again.');
+              break;
+            case 'audio-capture':
+              setPermissionError('No microphone found. Please connect a microphone.');
+              break;
+            case 'network':
+              setPermissionError('Network error. Please check your connection.');
+              break;
+            case 'aborted':
+              // User aborted, no error message needed
+              break;
+            default:
+              setPermissionError(`Speech recognition error: ${event.error}`);
+          }
+        };
 
-      recognitionRef.current.onerror = () => {
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+          // Stop the media stream to release the microphone
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+          }
+        };
+
+        recognitionRef.current.start();
+      } catch (error: any) {
+        console.error('VR AI: Failed to start speech recognition:', error);
         setIsListening(false);
-        if (audioEnabled) playError();
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current.start();
+        setPermissionError('Failed to start speech recognition. Please try again.');
+      }
     } else {
       // Fallback demo
       setTimeout(() => {
@@ -232,10 +405,29 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
   // Stop listening
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        // Ignore stop errors
+      }
     }
     setIsListening(false);
+    
+    // Release microphone
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
   }, []);
+
+  // Handle mic button click
+  const handleMicClick = async () => {
+    if (isListening) {
+      stopListening();
+    } else if (!isProcessing) {
+      await startListening();
+    }
+  };
 
   // Handle text submit
   const handleTextSubmit = (e: React.FormEvent) => {
@@ -368,6 +560,21 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
           </div>
         </div>
 
+        {/* Permission Error Alert */}
+        {permissionError && (
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-red-400">{permissionError}</p>
+              {micPermission === 'denied' && (
+                <p className="text-xs text-gray-500 mt-1">
+                  In incognito mode, you may need to click the microphone icon in the address bar to allow access.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Voice Interface */}
         <div className="mb-6">
           {/* Waveform Visualizer */}
@@ -409,18 +616,27 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
 
           {/* Voice Button */}
           <button
-            onClick={isListening ? stopListening : startListening}
-            disabled={isProcessing}
+            onClick={handleMicClick}
+            disabled={isProcessing || micPermission === 'unsupported'}
             className={cn(
               'w-full py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3',
-              isListening
-                ? 'bg-gradient-to-r from-purple-500/30 to-cyan-500/30 border-2 border-cyan-500 text-cyan-400 animate-pulse'
-                : isProcessing
-                  ? 'bg-gray-800 border border-gray-700 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/50 text-white hover:border-cyan-500/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.2)]'
+              micPermission === 'unsupported'
+                ? 'bg-gray-800 border border-gray-700 text-gray-500 cursor-not-allowed'
+                : isListening
+                  ? 'bg-gradient-to-r from-purple-500/30 to-cyan-500/30 border-2 border-cyan-500 text-cyan-400 animate-pulse'
+                  : isProcessing
+                    ? 'bg-gray-800 border border-gray-700 text-gray-500 cursor-not-allowed'
+                    : micPermission === 'denied'
+                      ? 'bg-red-500/10 border border-red-500/50 text-red-400 hover:bg-red-500/20'
+                      : 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/50 text-white hover:border-cyan-500/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.2)]'
             )}
           >
-            {isListening ? (
+            {micPermission === 'unsupported' ? (
+              <>
+                <MicOff className="w-6 h-6" />
+                Voice Not Supported
+              </>
+            ) : isListening ? (
               <>
                 <MicOff className="w-6 h-6" />
                 Tap to Stop
@@ -429,6 +645,11 @@ const VRAIInterface: React.FC<VRAIInterfaceProps> = ({
               <>
                 <Loader2 className="w-6 h-6 animate-spin" />
                 Processing...
+              </>
+            ) : micPermission === 'denied' ? (
+              <>
+                <Mic className="w-6 h-6" />
+                Click to Request Mic Access
               </>
             ) : (
               <>

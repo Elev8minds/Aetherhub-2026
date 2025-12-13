@@ -43,6 +43,8 @@ import VRConsentModal from './aether/VRConsentModal';
 import PortfolioOrbVR from './aether/PortfolioOrbVR';
 import VRAIInterface from './aether/VRAIInterface';
 import AssetLogo from './aether/AssetLogo';
+import FloatingVoiceButton from './aether/FloatingVoiceButton';
+
 
 
 // Icons
@@ -933,8 +935,12 @@ const AppLayout: React.FC = () => {
         </div>
       </main>
 
+
       {/* Footer - no sidebar padding since sidebar is now overlay only */}
       <Footer />
+
+      {/* Floating Voice Button - Always visible in bottom-right */}
+      <FloatingVoiceButton onCommand={handleVoiceCommand} />
 
       {/* Biometric Auth Modal */}
       {showAuthModal && (
